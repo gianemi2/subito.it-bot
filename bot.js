@@ -67,7 +67,9 @@ const checkForUpdates = () => {
                             id: id,
                             url: url,
                             title: $(elem).find('.item-title').text(),
-                            image: $(elem).find('.item-picture img').attr('src')
+                            image: $(elem).find('.item-picture img').attr('src').replace('bigthumbs', 'images'),
+                            location: $(elem).find('.posting-time-place').text(),
+                            price: $(elem).find('.price').text() || false
                         }
                         items.push(item);
                         count++;
@@ -143,7 +145,7 @@ const checkForUpdates = () => {
         const sendMessages = (newestItems) => {
             for (item of newestItems) {
                 var options = {
-                    caption: item.title,
+                    caption: `${item.title}\n${item.location.replace(' - ', '\n')}\n${item.price}`,
                     reply_markup: JSON.stringify({
                         inline_keyboard: [
                             [{ text: "Vedi l'articolo", url: item.url }]
@@ -330,7 +332,7 @@ const isValidCommand = (msg, command) => {
     }
 }
 
-setInterval(checkForUpdates, minutes(5));
+setInterval(checkForUpdates, minutes(1));
 
 const validURL = (str) => {
     var pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
