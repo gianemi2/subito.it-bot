@@ -258,7 +258,7 @@ const commands = {
             parse_mode: "HTML"
         });
     },
-    start: (id) => {
+    start: (id, msg) => {
         const url = msg.text.toLowerCase().replace('/start ', '');
         if (validURL(url) && url.indexOf('subito.it') !== -1) {
             subscribeToBot(id, url);
@@ -292,7 +292,7 @@ bot.on('message', (msg) => {
      * Iscrive un utente
      */
     if (isValidCommand(msg, '/start')) {
-        commands.start(id);
+        commands.start(id, msg);
         return true;
     }
 
