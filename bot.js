@@ -6,15 +6,7 @@ const $ = require('cheerio')
 const fs = require('fs')
 const json = 'responses.json'
 const minutes = (minutes) => ((1000 * 60) * minutes)
-let bot
-
-if (process.env.NODE_ENV === 'production') {
-    bot = new Bot(token);
-    bot.setWebHook(process.env.HEROKU_URL + bot.token);
-}
-else {
-    bot = new Bot(token, { polling: true });
-}
+const bot = new Bot(token, { polling: true });
 
 const checkForUpdates = () => {
     let currentSubscriberIndex = 0;
