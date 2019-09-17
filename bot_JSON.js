@@ -6,8 +6,6 @@ const $ = require('cheerio')
 const fs = require('fs')
 const mongoose = require('mongoose')
 const Subscriber = require('./model/Subscriber')
-const TelegramError = require('./Handlers/TelegramError')
-const TelegramResolve = require('./Handlers/TelegramResolve')
 
 // Todo remove it
 const json = 'responses.json'
@@ -16,7 +14,6 @@ mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true });
 const db = mongoose.connection;
 const minutes = (minutes) => ((1000 * 60) * minutes)
 const bot = new Bot(token, { polling: true });
-let chatid;
 
 db.on('error', console.error.bind(console, 'connection error: '));
 db.once('open', function () {
@@ -24,37 +21,9 @@ db.once('open', function () {
 
 })
 
-/**
- * 
- * Riceve come valore l'istanza TelegramResolve. 
- * Al momento handleError fa la stessa cosa però ho preferito dividerle per un futuro handler migliore.
- * @param new TelegramResolve()
- */
-const handleSuccesses = (success) => {
-    if (success.type === 'telegram-success-handler') {
-        console.log(success);
-        bot.sendMessage(chatid, success.message);
-    }
-}
-
-/**
- *
- * Riceve come valore l'istanza TelegramResolve.
- * Al momento handleSuccess fa la stessa cosa però ho preferito dividerle per un futuro handler migliore.
- * @param new TelegramError()
- */
-const handleError = (error) => {
-    if (error.type === 'telegram-error-handler') {
-        console.log(error);
-        bot.sendMessage(chatid, error.message);
-    }
-}
-
-const checkForUpdates = async () => {
+const checkForUpdates = () => {
     let currentSubscriberIndex = 0;
-    const subscribers = await Subscriber.find({}, (err, result) => {
-        return result;
-    });
+    const subscribers = JSON.parse(fs.readFileSync(json));
     /**
      * 
      * Funzione per gestire gli abbonati al bot. 
@@ -66,17 +35,17 @@ const checkForUpdates = async () => {
      * @TODO rimuovere il messaggi di avviso quando non c'è nessuna nuova news.
      * @param object subscriber 
      */
-    const handleSubscriber = async (subscriber, currentSubIndex) => {
+    const handleSubscriber = async (subscriber, currentSubscriber) => {
 
         /**
          * Costante che definisce l'index del subscriber corrente.
          */
-        const currentSubscriberIndex = currentSubIndex;
+        const currentSubscriberIndex = currentSubscriber;
 
         /**
          * Costante che definisce l'id della chat del subscriber.
          */
-        const chatid = subscriber.telegramID;
+        const chatid = subscriber.id;
 
         /**
          * Variabile che segnala l'array del topic corrente.
@@ -138,9 +107,8 @@ const checkForUpdates = async () => {
          * @return array newestItems
          */
         const grabNewestArticles = (items) => {
-            const savedIds = subscriber.topic[currentTopicIndex].items;
+            const savedIds = subscriber.subscribed[currentTopicIndex].items;
             let indexOfLastNewest = -1;
-
             for (let j = 0; j < items.length; j++) {
                 const item = items[j];
                 for (let i = 0; i < savedIds.length; i++) {
@@ -170,8 +138,12 @@ const checkForUpdates = async () => {
          */
 
         const saveSentItems = (newestItems) => {
-            subscriber.topic[currentTopicIndex].items = newestItems;
-            subscriber.save();
+            try {
+                subscribers[currentSubscriberIndex].subscribed[currentTopicIndex].items = newestItems;
+                fs.writeFileSync(json, JSON.stringify(subscribers));
+            } catch (error) {
+                console.log("Si è verificato un errore", error);
+            }
         }
 
         /**
@@ -201,15 +173,17 @@ const checkForUpdates = async () => {
             saveSentItems(newestItems);
         }
 
-        for (topic of subscriber.topic) {
+        for (topic of subscriber.subscribed) {
             const { url } = topic;
             html = await rp(url);
             currentTopicIndex = currentTopicIndex + 1;
             const items = fetchFromSubito(html);
             const newestItems = grabNewestArticles(items);
             if (newestItems.length > 0) {
+                console.log('new items!');
                 sendMessages(newestItems);
             } else {
+                console.log('no new items');
                 //bot.sendMessage(chatid, `Nessun nuovo articolo per il topic: ${topic.url}`);
             }
         }
@@ -221,158 +195,100 @@ const checkForUpdates = async () => {
     }
 }
 
-/**
- * Controlla se l'utente è un nuovo utente. 
- * In caso non lo sia prova ad aggiungere all'utente corrente il topic scelto.
- */
-const subscribeToBot = (subito_url) => {
-    const subscribeNewUser = new Promise((resolve, reject) => {
-        Subscriber.findOne({ telegramID: chatid }, (error, result) => {
-            if (!result) {
-                // Nessun utente trovato. Aggiungerlo.
-                const subscriber = new Subscriber({ telegramID: chatid });
-                subscriber.topic.push({ url: subito_url, item: [] });
-                subscriber.save();
-                resolve(new TelegramResolve(0));
-            } else {
-                // Utente trovato. Aggiungere il topic.
-                const succesfull = addNewTopicToUser(result, subito_url);
-                if (succesfull) {
-                    resolve(new TelegramResolve(1))
-                } else {
-                    reject(new TelegramError(1))
-                }
+const subscribeToBot = (chatid, subito_url) => {
+    try {
+        const response = JSON.parse(fs.readFileSync(json));
+        let subscriberIndex = 15;
+        const subscriber = response.filter((item, key) => {
+            if (item.id === chatid) {
+                subscriberIndex = key;
             }
-        })
-    })
-    subscribeNewUser
-        .then(response => {
-            handleSuccesses(response);
-        })
-        .catch(error => {
-            handleError(error);
-        })
-}
-
-/**
- * 
- * L'utente esiste già nel database, quindi aggiungo il topic alla sua lista di interessi.
- * In caso il topic sia già presente ritorno false per gestire l'errore.
- */
-const addNewTopicToUser = (user, subito_url) => {
-    const equalTopic = user.topic.filter(t => t.url === subito_url);
-    if (equalTopic.length > 0) {
-        return false;
-    } else {
-        user.topic.push({ url: subito_url, item: [] });
-        user.save();
-        return true;
+            return item.id === chatid;
+        });
+        // Check if user is already subscribed
+        if (subscriber.length) {
+            // Already subscribed!
+            response[subscriberIndex].subscribed.push({
+                url: subito_url,
+                items: []
+            })
+        } else {
+            // New user!
+            response.push({
+                id: chatid,
+                subscribed: [
+                    {
+                        url: subito_url,
+                        items: []
+                    }
+                ]
+            });
+        }
+        fs.writeFileSync(json, JSON.stringify(response));
+        bot.sendMessage(chatid, 'Iscritto con successo!')
+    } catch (error) {
+        console.log('polling error???', error);
+        bot.sendMessage(chatid, 'Si è verificato un errore')
     }
 }
 
-/**
- * 
- * Se l'utente esiste faccio una lista di tutti i suoi topic.
- */
-const listSubscriptions = () => {
-    const response = new Promise((resolve, reject) => {
-        Subscriber.findOne({ telegramID: chatid }, (error, result) => {
-            if (result) {
-                let message = '';
-                let index = 1;
-                if (result.topic.length > 0) {
-                    for (topic of result.topic) {
-                        message += `${index}. ${topic.url} \n\n`
-                        index++;
-                    }
-                }
-                resolve(new TelegramResolve(2, message));
-            } else {
-                reject(new TelegramError(0));
-            }
-        })
-    })
-    response
-        .then(message => handleSuccesses(message))
-        .catch(error => handleError(error))
+const listSubscriptions = (chatid) => {
+    try {
+        const response = JSON.parse(fs.readFileSync(json));
+        const subscriptions = response.filter(i => i.id === chatid)[0].subscribed;
+        let message = '';
+        let index = 1;
+        for (sub of subscriptions) {
+            message += `${index}. ${sub.url} \n\n`
+            index++;
+        }
+        return message;
+    } catch (error) {
+        bot.sendMessage(chatid, 'Si è verificato un errore');
+    }
 }
 
-/**
- * 
- * L'utente ha richiesto di rimuovere un topic
- */
-const unsubscribeFromBot = (subito_url) => {
-    const response = new Promise((resolve, reject) => {
-        Subscriber.findOne({ telegramID: chatid }, (error, result) => {
-            if (result) {
-                const oldLength = result.topic.length;
-                result.topic = result.topic.filter(t => t.url !== subito_url);
-
-                console.log(oldLength + '!=' + result.topic.length);
-
-                if (result.topic.length != oldLength) {
-                    // Topic rimosso correttamente
-                    result.save();
-                    resolve(new TelegramResolve(1))
-                } else {
-                    reject(new TelegramError(2))
-                }
-            } else {
-                reject(new TelegramError(0))
-            }
-        })
-    })
-    response
-        .then(success => handleSuccesses(success))
-        .catch(error => handleError(error))
+const unsubscribeFromBot = (chatid) => {
+    try {
+        const response = JSON.parse(fs.readFileSync(json));
+        const newResponse = response.filter(i => i.id !== chatid);
+        fs.writeFileSync(json, JSON.stringify(newResponse));
+        bot.sendMessage(chatid, 'Disiscritto con successo.')
+    } catch (err) {
+        bot.sendMessage(chatid, 'Si è verificato un errore')
+    }
 }
 
 bot.on("polling_error", (err) => console.log(err));
 
 const commands = {
-    help: () => {
+    help: (id) => {
         const helpMessage = `
         <b>Lista comandi disponibili</b>
         /start subito.it/url - Traccia i nuovi annunci.
 
         /list - Lista di tutte le sottoscrizioni.
         `;
-        bot.sendMessage(dedent(helpMessage), {
+        bot.sendMessage(id, dedent(helpMessage), {
             parse_mode: "HTML"
         });
     },
-    start: (msg) => {
+    start: (id, msg) => {
         const url = msg.text.toLowerCase().replace('/start ', '');
         if (validURL(url) && url.indexOf('subito.it') !== -1) {
-            subscribeToBot(url);
+            subscribeToBot(id, url);
         } else {
-            // TODO: aggiungi un valido messaggio di risposta. Spiegazione di come compilare correttamente il messaggio di start
-            bot.sendMessage(chatid, 'Comando start errato');
+            bot.sendMessage(id, '/start URL_DI_SUBITO_QUI');
         }
     },
-    list: () => {
-        listSubscriptions();
-    },
-    cancel: (msg) => {
-        const url = msg.text.toLowerCase().replace('/cancel ', '');
-        if (validURL(url) && url.indexOf('subito.it') !== -1) {
-            unsubscribeFromBot(url)
-        } else {
-            // TODO: aggiungi un valido messaggio di risposta. Spiegazione di come compilare correttamente il messaggio di rimuovi
-            bot.sendMessage(chatid, 'Comando rimuovi errato')
-        }
+    list: (id) => {
+        const message = listSubscriptions(id);
+        bot.sendMessage(id, message);
     }
 }
 
 bot.on('message', (msg) => {
-    /**
-     * 
-     * start - Iscriviti a un topic
-     * list - Lista di tutti i topic a cui sei iscritto
-     * cancel - Disiscriviti da un topic
-     * 
-     */
-    chatid = msg.chat.id
+    const { id } = msg.chat
 
     /**
      * HELP COMMAND
@@ -381,7 +297,7 @@ bot.on('message', (msg) => {
      */
 
     if (isValidCommand(msg, '/help')) {
-        commands.help(chatid);
+        commands.help(id);
         return true;
     }
 
@@ -391,12 +307,12 @@ bot.on('message', (msg) => {
      * Iscrive un utente
      */
     if (isValidCommand(msg, '/start')) {
-        commands.start(msg);
+        commands.start(id, msg);
         return true;
     }
 
     if (isValidCommand(msg, '/list')) {
-        commands.list();
+        commands.list(id);
         return true;
     }
 
@@ -407,7 +323,7 @@ bot.on('message', (msg) => {
      */
 
     if (isValidCommand(msg, '/cancel')) {
-        commands.cancel(msg)
+        unsubscribeFromBot(id);
         return true;
     }
 
@@ -417,7 +333,7 @@ bot.on('message', (msg) => {
      * Dato il return messo in ogni listener del comando. Se arrivo fino a qui vuol dire che nessun comando dato era valido. Invio il comando HELP.
      */
 
-    commands.help();
+    commands.help(id);
     return true;
 });
 
@@ -429,7 +345,7 @@ const isValidCommand = (msg, command) => {
     }
 }
 
-setInterval(checkForUpdates, minutes(5));
+setInterval(checkForUpdates, minutes(1));
 
 const validURL = (str) => {
     var pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
