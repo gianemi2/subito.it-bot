@@ -1,55 +1,70 @@
-# heroku-node-telegram-bot
-Starter pack for running telegram bot on the Heroku using Node.js
+# Subito.it bot
 
-# Step-by-step
+Imposta delle query di ricerca che desideri seguire. Il bot penserà a notificarti quando nuovi articoli verranno pubblicati. 
 
-### Try bot locally
+Potete iscrivervi al bot su telegram [cliccando qui](https://t.me/nonsubitobot).
 
-1. Create your own bot using Telegram's [BotFather](https://core.telegram.org/bots#3-how-do-i-create-a-bot) and grab your TOKEN.
-2. Clone or download and unpack this repo.
-3. Go to the app's folder using `cd ~/heroku-node-telegram-bot`
-4. Run `npm install` (in some cases you will need to run this with sudo, you know, just the permissions).
-5. Rename .env_example file into .env and set TOKEN to the value, you've got from the BotFather.
-6. Run `npm start` and send smth to your bot.
-7. After it says "hello" to you, we can go to the next step😎
+## Installazione
 
-### Deploy your bot to the heroku
+È possibile creare una vostra instanza di questo bot per modificarlo o per aggiungere nuove funzioni. 
 
-1. Create the [Heroku account](https://heroku.com) and install the [Heroku Toolbelt](https://toolbelt.heroku.com/).
-2. Login to your Heroku account using `heroku login`.
-3. Go to the app's folder using `cd ~/heroku-node-telegram-bot`
-4. Run `heroku create` to prepare the Heroku environment.
-5. Run `heroku config:set TOKEN=SET HERE THE TOKEN YOU'VE GOT FROM THE BOTFATHER` and `heroku config:set HEROKU_URL=$(heroku info -s | grep web_url | cut -d= -f2)` to configure environment variables on the server.
-6. Run `git add -A && git commit -m "Ready to run on heroku" && git push heroku master` to deploy your bot to the Heroku server.
-7. Send smth to the bot to check out if it works ok.
+Sarebbe fantastico aggiungere nuove funzioni direttamente a questa repository tramite dei fork ma se volete potete creare un'instanza privata di vostra esclusiva proprietà.
 
-### Going further
 
-Now you may wish to add other functionality to your bot and here you can face some problems. The reason is that in development mode your bot works using [polling](https://en.wikipedia.org/wiki/Push_technology#Long_polling) and on the heroku server it uses the [webhook](https://core.telegram.org/bots/api#setwebhook), because heroku will shut down the web-server after a period of inactivity that will result in your polling loop to shut down too. Once webhook was enabled, telegram will return an error `{"ok":false,"error_code":409,"description":"Error: Conflict: another webhook is active"}` when you will try to use polling again, and it's actually ok.
+### Creare un bot su Telegram e ottenere il Token
+------
 
-To go back to development mode, you will need to run `npm run switch_to_dev`. This script will disable current webhook and start your local server. Don't be afraid - when you will finish with the changes you may simply push your bot to heroku using `git push heroku master`. Then you should restart your app using `heroku restart`. It will set the webhook again.
+Ci sono moltissimi guide online su come creare un bot su Telegram e ottenerne il token. [Lascio comunque il link della documentazione ufficiale di Telegram dove potrete scendere più nel dettaglio.](https://core.telegram.org/bots#6-botfather)
 
-### Possible OS issues
+### Preparare l'app di Heroku
+------
 
-As i work on MacOS and sometimes on Ubuntu, you may face some problems with my npm scripts, so let's figure out how they work.
+Al momento spiegherò solo come hostare il bot su Heroku. In futuro aggiungerò una veloce guida per hostarlo anche in locale.
 
-`npm run switch_to_dev` runs `export $(cat .env | xargs) && wget --spider https://api.telegram.org/bot$TOKEN/setWebhook?url= --delete-after && node index.js` which is actually an API call which will reset webhook (with the TOKEN from your environment variable) and `npm start`. 
+È necessario avere installata la [CLI di heroku](https://devcenter.heroku.com/articles/heroku-cli) ed effettuate il login ad essa seguendo la guida.
 
-**If wget don't work (or is not installed) on your OS**, you can simply open the `https://api.telegram.org/botYOUR_TOKEN/setWebhook?url=` in your browser, but don't forget to replace YOUR_TOKEN with the token, you've got from the BotFather.
 
-If your bot is not responding locally, in most cases, you will need to reset the environment variables by restarting your application.
+```
+$ git clone https://github.com/gianemi2/subito.it-bot.git
+$ cd subito.it-bot
 
-### Links and references
+$ heroku create
+$ heroku config:set TOKEN=THE_TELEGRAM_TOKEN_FROM_BOTFATHER
+$ git add -A
+$ git commit -m "Ready to run on heroku"
+$ git push heroku master
+```
 
-Actually, this repo is created because I've faced problems when I was trying to run the bot using [mvalipour's article](http://mvalipour.github.io/node.js/2015/12/06/telegram-bot-webhook-existing-express/) and [this PR](https://github.com/mvalipour/telegram-bot-webhook/pull/3) to his repo. Still, these links will be very useful for the beginners. 
+Quando tutto sarà pronto e settato correttamente potrete provare a inviare un messaggio al bot appena creato da botfather per vedere se risponde nel modo giusto.
 
-The solution relies on the [node-telegram-bot-api wrapper](https://github.com/yagop/node-telegram-bot-api) by the @yagop, so you can find more info there.
+## Prevenire il Dyno Sleeping su Heroku
+Ringrazio [Emiliano Talamo](https://github.com/EmilianoTalamo/) per questa veloce soluzione per evitare che i Dyno di Heroku dopo un'ora senza richieste vadano in sleep.
 
-Also check out [official API docs](https://core.telegram.org/bots/api) by Telegram team, it may be helpfull.
+Cito testualmente la sua guida:
 
-Good luck, BotCoder!
+Di default, le apps su Heroku vanno in riposo dopo 1 ora di inattività. Questo può essere evitato impostando i `Worker Dyno` invece che come `Web dyno`. Questo è già impostato nel Procfile, ma controlla bene che sia così anche nella dashboard di Heroku.
 
-P.S. If you see that something is not working, please, open an [issue](https://github.com/volodymyrlut/heroku-node-telegram-bot/issues) or send me a PR if you've managed to make code better.
+1. Vai alla tua [Dashboard di Heroku](https://dashboard.heroku.com) e seleziona la tua app.
 
-Created with great passion for bots.
-In case of any bot development proposals, contact me [here](http://lut.rocks).
+2. Seleziona il tab `resources`.
+
+![Resources Tab](https://i.imgur.com/vFMtJnN.jpg)
+
+3. Togli la spunta da `WEB` (in caso ci sia) e mettila su `WORKER` (in caso non ci sia). Per gestire le spunte dovrete prima cliccare sulla matitina a destra.
+
+![Check worker, uncheck web](https://i.imgur.com/LxpbJlN.jpg)
+
+## Contribute
+I pull requests sono i benvenuti. Per modifiche importanti cerca di aprire prima un issue così da poter discuterne prima insieme 😊
+
+Please make sure to update tests as appropriate.
+
+## Thanks to
+
+🙏🏼 Grazie a [Emiliano Talamo](https://github.com/EmilianoTalamo/telegram-bot-node-and-heroku) per il boilerplate di un bot per Telegram fatto in Node.
+
+🙏🏼 Grazie a [Yagop](https://github.com/yagop/node-telegram-bot-api) per le API per interfacciare semplicemente Telegram e Node.
+
+
+## License
+[MIT](LICENSE)
