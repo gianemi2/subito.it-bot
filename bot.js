@@ -429,7 +429,7 @@ const isValidCommand = (msg, command) => {
     }
 }
 
-setInterval(checkForUpdates, minutes(5));
+setInterval(checkForUpdates, minutes(1));
 
 const validURL = (str) => {
     var pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
