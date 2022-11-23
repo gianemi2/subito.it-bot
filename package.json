@@ -20,7 +20,6 @@
     "puppeteer": "^1.19.0",
     "request": "^2.88.0",
     "request-promise": "^4.2.4"
-  },
-  "build": "npm run build && rm -rf node_modules && npm install --only=production"
+  }
   
 }
