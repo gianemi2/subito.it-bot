@@ -98,21 +98,21 @@ const checkForUpdates = async () => {
          * 
          * @return array of objects
          */
-        const fetchFromSubito = (html, limit = 3) => {
-            const itemsResponse = $('.items .items__item', html);
+        const fetchFromSubito = (html, limit = 5) => {
+            const itemsResponse = $('.items__item', html);
             const items = [];
             let count = 0;
             $(itemsResponse).each((i, elem) => {
-                if ($(elem).find('.item-title').length) {
+                if ($(elem).find('.ItemTitle-module_item-title__VuKDo').length) {
                     if (count < limit) {
                         const url = $(elem).find('.link').attr('href');
                         const id = url.substring(url.lastIndexOf('-') + 1, url.indexOf('.htm'));
                         const item = {
                             id: id,
                             url: url,
-                            title: $(elem).find('.item-title').text(),
-                            image: $(elem).find('.item-picture img').attr('src').replace('bigthumbs', 'images'),
-                            location: $(elem).find('.posting-time-place').text(),
+                            title: $(elem).find('.ItemTitle-module_item-title__VuKDo').text(),
+                            image: $(elem).find('.CardImage-module_photo__WMsiO').attr('src'),//.replace('bigthumbs', 'images'),
+                            location: $(elem).find('.item-posting-time-place').text(),
                             price: $(elem).find('.price').text() || false
                         }
                         items.push(item);
