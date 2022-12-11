@@ -14,7 +14,7 @@
     "body-parser": "^1.15.0",
     "cheerio": "^1.0.0-rc.3",
     "dotenv": "^4.0.0",
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "mongoose": "^5.7.1",
     "node-telegram-bot-api": "^0.30.0",
     "puppeteer": "^1.19.0",
