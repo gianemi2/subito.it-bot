@@ -2,7 +2,7 @@ const token = process.env.TOKEN;
 
 const Bot = require('node-telegram-bot-api')
 const rp = require('request-promise')
-const $ = require('cheerio')
+const cheerio = require('cheerio')
 const fs = require('fs')
 const mongoose = require('mongoose')
 const Subscriber = require('./model/Subscriber')
@@ -99,27 +99,30 @@ const checkForUpdates = async () => {
          * @return array of objects
          */
         const fetchFromSubito = (html, limit = 5) => {
-            const itemsResponse = $('.items__item', html);
+            const $ = cheerio.load(html)
+            const itemsResponse = $('.items__item.item-card');
             const items = [];
             let count = 0;
             $(itemsResponse).each((i, elem) => {
-                if ($(elem).find('.ItemTitle-module_item-title__VuKDo').length) {
+                console.log($(elem).html());
+                if ($(elem).find('.index-module_sbt-text-atom__ifYVU').length) {
                     if (count < limit) {
-                        const url = $(elem).find('.link').attr('href');
+                        const url = $(elem).find('.SmallCard-module_link__hOkzY').attr('href');
                         const id = url.substring(url.lastIndexOf('-') + 1, url.indexOf('.htm'));
                         const item = {
                             id: id,
                             url: url,
-                            title: $(elem).find('.ItemTitle-module_item-title__VuKDo').text(),
+                            title: $(elem).find('.index-module_sbt-text-atom__ifYVU').text(),
                             image: $(elem).find('.CardImage-module_photo__WMsiO').attr('src'),//.replace('bigthumbs', 'images'),
-                            location: $(elem).find('.item-posting-time-place').text(),
-                            price: $(elem).find('.price').text() || false
+                            location: $(elem).find('.PostingTimeAndPlace-module_date-location__1Owcv').text(),
+                            price: $(elem).find('.index-module_price__N7M2x').text() || false
                         }
                         items.push(item);
                         count++;
                     }
                 }
             })
+            console.log(items);
             return items;
         }
 
@@ -161,6 +164,7 @@ const checkForUpdates = async () => {
                 return items;
             }
         }
+
 
         /**
          * 
@@ -206,6 +210,9 @@ const checkForUpdates = async () => {
             html = await rp(url);
             currentTopicIndex = currentTopicIndex + 1;
             const items = fetchFromSubito(html);
+            if (!items.length)
+                return;
+
             const newestItems = grabNewestArticles(items);
             if (newestItems.length > 0) {
                 sendMessages(newestItems);
@@ -429,7 +436,9 @@ const isValidCommand = (msg, command) => {
     }
 }
 
-setInterval(checkForUpdates, minutes(1));
+checkForUpdates()
+
+//setInterval(checkForUpdates, minutes(1));
 
 const validURL = (str) => {
     var pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
