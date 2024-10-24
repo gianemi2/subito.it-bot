@@ -104,7 +104,6 @@ const checkForUpdates = async () => {
             const items = [];
             let count = 0;
             $(itemsResponse).each((i, elem) => {
-                console.log($(elem).html());
                 if ($(elem).find('.index-module_sbt-text-atom__ifYVU').length) {
                     if (count < limit) {
                         const url = $(elem).find('.SmallCard-module_link__hOkzY').attr('href');
@@ -122,7 +121,6 @@ const checkForUpdates = async () => {
                     }
                 }
             })
-            console.log(items);
             return items;
         }
 
@@ -436,7 +434,7 @@ const isValidCommand = (msg, command) => {
     }
 }
 
-setInterval(checkForUpdates, minutes(1));
+setInterval(checkForUpdates, minutes(5));
 
 const validURL = (str) => {
     var pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
