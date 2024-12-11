@@ -111,8 +111,8 @@ const checkForUpdates = async () => {
                         const item = {
                             id: id,
                             url: url,
-                            title: $(elem).find('.index-module_sbt-text-atom__ifYVU').text(),
-                            image: $(elem).find('.CardImage-module_photo__WMsiO').attr('src'),//.replace('bigthumbs', 'images'),
+                            title: $(elem).find('h2.index-module_sbt-text-atom__ifYVU').text(),
+                            image: $(elem).find('.CardImage-module_photo__WMsiO').attr('src'),
                             location: $(elem).find('.PostingTimeAndPlace-module_date-location__1Owcv').text(),
                             price: $(elem).find('.index-module_price__N7M2x').text() || false
                         }
@@ -188,7 +188,7 @@ const checkForUpdates = async () => {
         const sendMessages = (newestItems) => {
             for (item of newestItems) {
                 var options = {
-                    caption: `${item.title}\n${item.location.replace(' - ', '\n')}\n${item.price}`,
+                    caption: `${item.title}\n\n${item.location.replace(' - ', '\n')}\n\n${item.price}`,
                     reply_markup: JSON.stringify({
                         inline_keyboard: [
                             [{ text: "Vedi l'articolo", url: item.url }]
